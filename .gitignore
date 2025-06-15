@@ -30,3 +30,9 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+
+go-music
+bootstrap
+old/
+env.sh
