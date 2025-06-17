@@ -39,8 +39,8 @@ var audioExtensions = []string{"mp3", "wav", "ogg", "mp4"}
 // S3 configuration from environment variables
 var (
 	s3Bucket = os.Getenv("BUCKET")
-	s3Region = os.Getenv("AWS_REGION")
-	s3Prefix = os.Getenv("S3_PREFIX") // optional, e.g. "music/"
+	s3Region = os.Getenv("AWS_REGION") // This is now optional
+	s3Prefix = os.Getenv("S3_PREFIX")
 )
 
 var s3Client *s3.Client
@@ -96,16 +96,34 @@ func audioProxyHandler(c *gin.Context) {
 
 // initS3 initializes the S3 client from environment variables.
 func initS3() error {
-	if s3Bucket == "" || s3Region == "" {
-		return fmt.Errorf("BUCKET and AWS_REGION environment variables must be set")
+	if s3Bucket == "" {
+		return fmt.Errorf("BUCKET environment variable must be set")
 	}
-	if s3Prefix != "" && !strings.HasSuffix(s3Prefix, "/") {
-		s3Prefix += "/"
+
+	var cfgOpts []func(*config.LoadOptions) error
+	// If the AWS_REGION is explicitly set, use it.
+	if s3Region != "" {
+		cfgOpts = append(cfgOpts, config.WithRegion(s3Region))
 	}
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(s3Region))
+
+	// Load the configuration. The SDK will automatically look for the region
+	// in other places (like the Lambda environment variable AWS_REGION) if it's not provided.
+	cfg, err := config.LoadDefaultConfig(context.Background(), cfgOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to load AWS config: %w", err)
 	}
+
+	// After attempting to load everything, if the region is still missing, we must error out.
+	if cfg.Region == "" {
+		return fmt.Errorf("AWS region could not be found. Please set the AWS_REGION environment variable or configure it in your AWS profile")
+	}
+
+	log.Printf("S3 client configured for region: %s", cfg.Region)
+
+	if s3Prefix != "" && !strings.HasSuffix(s3Prefix, "/") {
+		s3Prefix += "/"
+	}
+
 	s3Client = s3.NewFromConfig(cfg)
 	return nil
 }
@@ -201,7 +219,6 @@ func handleGetAllMp3InDirs(c *gin.Context, data string) {
 	echoReqHtml(c, []interface{}{"ok", finalFiles}, "getAllMp3Data")
 }
 
-// (Other handlers like handleDirRequest, handleSearchTitle, etc. would go here)
 // ... (omitting the rest of the handlers for brevity as they are unchanged)
 
 // --- Utility Functions ---
@@ -270,7 +287,6 @@ func ea(varData []interface{}) string {
 // It's good practice to ensure all called functions exist.
 
 func handleDirRequest(c *gin.Context, dir string) {
-	// This is a simplified version. Replace with your actual S3 logic.
 	dirs, files, err := s3List(dir, "/")
 	if err != nil {
 		log.Printf("S3 list error: %v", err)
