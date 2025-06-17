@@ -22,7 +22,7 @@ jobs:
           go-version: 'stable' # Specify your Go version
 
       - name: Build Go application
-        run: go build -v -o ${{ github.event.repository.name }} ./...
+        run: go build -v -o bootstrap ./...
 
       - name: Create Archive Name
         run: echo "ASSET_NAME=${{ github.event.repository.name }}-${{ github.ref_name }}.zip" >> $GITHUB_ENV
