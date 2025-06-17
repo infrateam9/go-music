@@ -28,7 +28,7 @@ jobs:
         run: echo "ASSET_NAME=${{ github.event.repository.name }}-${{ github.ref_name }}.zip" >> $GITHUB_ENV
 
       - name: Zip the binary
-        run: zip -r ${{ env.ASSET_NAME }} ${{ github.event.repository.name }} ./static
+        run: zip -r ${{ env.ASSET_NAME }} ./bootstrap ./static
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
