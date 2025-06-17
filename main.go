@@ -73,7 +73,9 @@ func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 
 // main is the entry point for local execution or Lambda deployment.
 func main() {
-	if _, ok := os.LookupEnv("_LAMBDA_SERVER_PORT"); ok {
+	// A more reliable way to check if we are in a Lambda environment.
+	// The AWS_LAMBDA_FUNCTION_NAME variable is always set by the Lambda runtime.
+	if _, ok := os.LookupEnv("AWS_LAMBDA_FUNCTION_NAME"); ok {
 		lambda.Start(Handler)
 	} else {
 		log.Println("Running local server on :8080")
