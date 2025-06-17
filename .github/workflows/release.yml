@@ -1,0 +1,38 @@
+name: Release Go Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Grant the job write permission to the repository contents
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable' # Specify your Go version
+
+      - name: Build Go application
+        run: go build -v -o ${{ github.event.repository.name }} ./...
+
+      - name: Create Archive Name
+        run: echo "ASSET_NAME=${{ github.event.repository.name }}-${{ github.ref_name }}.zip" >> $GITHUB_ENV
+
+      - name: Zip the binary
+        run: zip -r ${{ env.ASSET_NAME }} ${{ github.event.repository.name }} ./static
+
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
