@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -86,13 +87,22 @@ func main() {
 // audioProxyHandler streams an audio file from S3.
 func audioProxyHandler(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("path"), "/")
+	if key == "" {
+		c.String(http.StatusBadRequest, "Missing song path")
+		return
+	}
+
 	body, size, contentType, err := s3GetAudioFile(key)
 	if err != nil {
-		log.Printf("S3 audio error: %v", err)
+		log.Printf("S3 audio error for key [%s]: %v", key, err)
 		c.String(http.StatusNotFound, "Audio not found")
 		return
 	}
 	defer body.Close()
+
+	// Explicitly set headers before streaming data
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Length", fmt.Sprintf("%d", size))
 	c.DataFromReader(http.StatusOK, size, contentType, body, nil)
 }
 
@@ -170,7 +180,20 @@ func s3GetAudioFile(key string) (io.ReadCloser, int64, string, error) {
 	if resp.ContentLength != nil {
 		size = *resp.ContentLength
 	}
-	return resp.Body, size, aws.ToString(resp.ContentType), nil
+
+	contentType := aws.ToString(resp.ContentType)
+	// If S3 doesn't provide a content type, guess it from the file extension.
+	if contentType == "" || contentType == "application/octet-stream" {
+		mimeType := mime.TypeByExtension(filepath.Ext(key))
+		if mimeType != "" {
+			contentType = mimeType
+		} else {
+			// Fallback if mime type can't be guessed
+			contentType = "application/octet-stream"
+		}
+	}
+
+	return resp.Body, size, contentType, nil
 }
 
 func s3ListAllAudioFiles(prefix string) ([]string, error) {
