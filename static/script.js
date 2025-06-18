@@ -353,8 +353,16 @@ function updateAllLists() {
 function setAndPlayTrack(track) {
     gebi('trackName').innerHTML = '&nbsp;' + getTrackTitle(track) + '<br>&nbsp;<smallPath>' + getTrackDir(track) + '</smallPath>';
     playingTrack = track;
-    player.src = "/audio/" + track;
-    player.play();
+    // Fetch the pre-signed S3 URL from the backend and set it as the audio src
+    fetch('/audio/' + track)
+        .then(res => res.json())
+        .then(data => {
+            player.src = data.url;
+            player.play();
+        })
+        .catch(err => {
+            alert('Failed to load audio: ' + err);
+        });
     updateAllLists();
 }
 

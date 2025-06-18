@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -109,7 +110,7 @@ func s3GetPresignedUrl(key string) (string, error) {
 		Key:    aws.String(s3Prefix + key),
 	}
 	presignedReq, err := presignClient.PresignGetObject(context.Background(), input, func(opts *s3.PresignOptions) {
-		opts.Expires = 900 // 15 minutes
+		opts.Expires = 15 * time.Minute // 15 minutes
 	})
 	if err != nil {
 		return "", err
