@@ -84,7 +84,7 @@ func main() {
 	}
 }
 
-// audioProxyHandler streams an audio file from S3.
+// audioProxyHandler returns a pre-signed S3 URL for the audio file instead of streaming it through Lambda.
 func audioProxyHandler(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("path"), "/")
 	if key == "" {
@@ -92,18 +92,29 @@ func audioProxyHandler(c *gin.Context) {
 		return
 	}
 
-	body, size, contentType, err := s3GetAudioFile(key)
+	presignedUrl, err := s3GetPresignedUrl(key)
 	if err != nil {
-		log.Printf("S3 audio error for key [%s]: %v", key, err)
+		log.Printf("S3 presign error for key [%s]: %v", key, err)
 		c.String(http.StatusNotFound, "Audio not found")
 		return
 	}
-	defer body.Close()
+	c.JSON(http.StatusOK, gin.H{"url": presignedUrl})
+}
 
-	// Explicitly set headers before streaming data
-	c.Header("Content-Type", contentType)
-	c.Header("Content-Length", fmt.Sprintf("%d", size))
-	c.DataFromReader(http.StatusOK, size, contentType, body, nil)
+// s3GetPresignedUrl generates a pre-signed URL for the given S3 key.
+func s3GetPresignedUrl(key string) (string, error) {
+	presignClient := s3.NewPresignClient(s3Client)
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(s3Bucket),
+		Key:    aws.String(s3Prefix + key),
+	}
+	presignedReq, err := presignClient.PresignGetObject(context.Background(), input, func(opts *s3.PresignOptions) {
+		opts.Expires = 900 // 15 minutes
+	})
+	if err != nil {
+		return "", err
+	}
+	return presignedReq.URL, nil
 }
 
 // initS3 initializes the S3 client from environment variables.
