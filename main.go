@@ -182,13 +182,23 @@ func s3GetAudioFile(key string) (io.ReadCloser, int64, string, error) {
 	}
 
 	contentType := aws.ToString(resp.ContentType)
-	// If S3 doesn't provide a content type, guess it from the file extension.
+	// Patch: Always set correct audio content type for known extensions
+	ext := strings.ToLower(filepath.Ext(key))
+	switch ext {
+	case ".mp3":
+		contentType = "audio/mpeg"
+	case ".wav":
+		contentType = "audio/wav"
+	case ".ogg":
+		contentType = "audio/ogg"
+	case ".mp4":
+		contentType = "audio/mp4"
+	}
 	if contentType == "" || contentType == "application/octet-stream" {
-		mimeType := mime.TypeByExtension(filepath.Ext(key))
+		mimeType := mime.TypeByExtension(ext)
 		if mimeType != "" {
 			contentType = mimeType
 		} else {
-			// Fallback if mime type can't be guessed
 			contentType = "application/octet-stream"
 		}
 	}
