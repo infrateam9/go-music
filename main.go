@@ -59,6 +59,9 @@ func init() {
 	r.GET("/", func(c *gin.Context) {
 		c.File("./static/index.html")
 	})
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.File("./static/favicon.ico")
+	})
 	r.Use(ResponseLogger())
 	r.POST("/api", handleRequest)
 	r.GET("/audio/*path", audioProxyHandler)
